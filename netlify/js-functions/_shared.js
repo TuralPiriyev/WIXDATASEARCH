@@ -165,7 +165,18 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
     out.case_material = 'Polad';
     out.bracelet_type = 'Polad';
     out.bracelet_color = out.bracelet_type === 'Dəri' ? 'Gəhvəyi' : 'Boz';
-    if (!out.sr_dial_color || out.sr_dial_color === 'Qara') out.sr_dial_color = 'Sarı';
+    if (!['Göy', 'Qara', 'Sarı'].includes(out.sr_dial_color)) out.sr_dial_color = 'Sarı';
+  }
+
+  // Citizen BN**** (Eco-Drive diver/tool) override
+  if (/^BN\d/.test(m) || (brand === 'CITIZEN' && /BN/.test(m))) {
+    out.movement = 'Kvarts';
+    out.bracelet_type = 'Kauçuk';
+    out.case_material = 'Polad';
+    out.bracelet_color = out.bracelet_color === 'Sarı' ? 'Sarı' : 'Qara';
+    if (!out.sr_dial_color || out.sr_dial_color === 'Boz' || out.sr_dial_color === 'Krem') {
+      out.sr_dial_color = detectDialColorFromModel(m) || 'Göy';
+    }
   }
 
   // Seiko SSA**** open-heart / dress override
@@ -198,6 +209,24 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   // Women's-only pattern
   if (/^(GMA-|LTP|SHEEN|LA670|BA-|BGD)/.test(m)) {
     out.gender = 'Qadın';
+  }
+
+  // Global BN safety: never mechanical for BN models
+  if (/BN/.test(m)) {
+    out.movement = 'Kvarts';
+  }
+
+  // Rubber/silicone strap consistency: never classify as leather
+  if (out.bracelet_type === 'Kauçuk' && out.bracelet_color === 'Gəhvəyi') {
+    out.bracelet_color = 'Qara';
+  }
+
+  // Diver style preference: dial should trend to Göy/Qara/Sarı
+  if (/(DIVER|PROSPEX|AQUALAND|SEASTAR|MARIN(E|ER)|NY\d|BN\d|SPB\d|SBDC\d|SKX)/.test(m)) {
+    if (!['Göy', 'Qara', 'Sarı'].includes(out.sr_dial_color)) {
+      out.sr_dial_color = /^NY\d/.test(m) ? 'Sarı' : (detectDialColorFromModel(m) || 'Göy');
+      if (!['Göy', 'Qara', 'Sarı'].includes(out.sr_dial_color)) out.sr_dial_color = 'Göy';
+    }
   }
 
   return out;
@@ -446,6 +475,16 @@ function applyClassifierOnSpec(spec, classified, model) {
   out.mexanizm = needsReplace(out.mexanizm) ? classified.movement : out.mexanizm;
   out.kemer_rengi = needsReplace(out.kemer_rengi) ? `KR - ${classified.bracelet_color}` : out.kemer_rengi;
   out.korpus = needsReplace(out.korpus) ? classified.case_material : out.korpus;
+
+  const m = String(model || '').toUpperCase();
+  if (/(DIVER|PROSPEX|AQUALAND|SEASTAR|MARIN(E|ER)|NY\d|BN\d|SPB\d|SBDC\d|SKX)/.test(m)) {
+    const currentDial = String(out.siferblat_rengi || '').replace(/^SR\s*-\s*/i, '').trim();
+    if (!['Göy', 'Qara', 'Sarı'].includes(currentDial)) {
+      const preferred = /^NY\d/.test(m) ? 'Sarı' : (detectDialColorFromModel(m) || 'Göy');
+      out.siferblat_rengi = `SR - ${['Göy', 'Qara', 'Sarı'].includes(preferred) ? preferred : 'Göy'}`;
+    }
+  }
+
   return out;
 }
 
