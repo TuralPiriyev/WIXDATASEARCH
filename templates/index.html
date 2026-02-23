@@ -199,6 +199,15 @@
             document.getElementById('errorSection').classList.add('hidden');
         }
 
+        function apiUrl(path) {
+            const clean = String(path || '').replace(/^\/+/, '');
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            if (isLocal) {
+                return `/api/${clean}`;
+            }
+            return `/.netlify/functions/${clean}`;
+        }
+
         function showProgress(totalModels) {
             document.getElementById('progressSection').classList.remove('hidden');
             progressTotalModels = Math.max(0, Number(totalModels) || 0);
@@ -252,7 +261,7 @@
             try {
                 for (let i = 0; i < models.length; i++) {
                     const model = models[i];
-                    const response = await fetch('/api/search-single', {
+                    const response = await fetch(apiUrl('search-single'), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -313,7 +322,7 @@
 
         async function downloadCSV() {
             try {
-                const response = await fetch('/api/generate-csv', {
+                const response = await fetch(apiUrl('generate-csv'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -380,7 +389,7 @@
 
         async function downloadTemplate() {
             try {
-                const response = await fetch('/api/get-template');
+                const response = await fetch(apiUrl('get-template'));
                 if (!response.ok) {
                     throw new Error('Failed to download template');
                 }
