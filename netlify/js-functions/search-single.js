@@ -7,7 +7,7 @@ exports.handler = async (event) => {
     if (!model) {
       return { statusCode: 400, body: JSON.stringify({ error: 'model_number is required' }) };
     }
-    const result = createWixRowFromModel(model);
+    const result = await createWixRowFromModel(model);
     return {
       statusCode: 200,
       headers: { 'content-type': 'application/json; charset=utf-8' },

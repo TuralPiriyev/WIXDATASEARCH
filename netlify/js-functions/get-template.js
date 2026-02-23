@@ -1,7 +1,7 @@
 const { WIX_COLUMNS, createWixRowFromModel, escapeCsv } = require('./_shared');
 
 exports.handler = async () => {
-  const sample = createWixRowFromModel('EXAMPLE001');
+  const sample = await createWixRowFromModel('EXAMPLE001');
   const lines = [WIX_COLUMNS.join(','), WIX_COLUMNS.map((c) => escapeCsv(sample[c] || '')).join(',')];
   return {
     statusCode: 200,
