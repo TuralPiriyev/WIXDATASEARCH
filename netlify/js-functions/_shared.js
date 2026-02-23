@@ -70,12 +70,14 @@ function extractModelAndSeries(rawInput) {
   }
 
   if (!series) {
-    const m = compact.match(/^([A-Z]{2,5})/);
-    if (m) series = m[1];
+    // e.g. T137..., M123..., etc.
+    const mAlphaThenDigits = compact.match(/^([A-Z]{1,5})(?=\d)/);
+    if (mAlphaThenDigits) series = mAlphaThenDigits[1];
   }
 
-  if (!series || series.length < 2) {
-    return { ok: false, error: 'SERIES_CODE_NOT_IDENTIFIED', model: bestModel, series: '' };
+  if (!series) {
+    // Keep row processable if model code is identified but series is not in known list.
+    series = 'GEN';
   }
 
   return { ok: true, error: '', model: bestModel, series };
