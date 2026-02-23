@@ -33,6 +33,54 @@ const CLASSIFIER_ALLOWED_VALUES = {
   case_material: ['Polad', 'Plastik']
 };
 
+const SERIES_PRIORITY = ['EFB', 'ECB', 'EFV', 'GMA', 'GA', 'GM', 'DW', 'NY', 'BN', 'SSA', 'SPB', 'SBDC', 'FAC', 'RA', 'AC'];
+
+function extractModelAndSeries(rawInput) {
+  const raw = String(rawInput || '').trim();
+  if (!raw) {
+    return { ok: false, error: 'MODEL_INPUT_EMPTY', model: '', series: '' };
+  }
+
+  const scrubbed = raw
+    .replace(/\b(watch|product|name|model|ref(?:erence)?|sku)\b[:\-\s]*/gi, ' ')
+    .replace(/[()\[\]{}]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const upper = scrubbed.toUpperCase();
+  const tokens = upper.match(/[A-Z0-9]+(?:-[A-Z0-9]+)*/g) || [];
+  const candidates = tokens.filter((t) => /[A-Z]/.test(t) && /\d/.test(t));
+
+  let bestModel = candidates[0] || '';
+  if (!bestModel && tokens.length === 1 && /^[A-Z]{2,5}$/.test(tokens[0])) {
+    bestModel = tokens[0];
+  }
+
+  if (!bestModel) {
+    return { ok: false, error: 'MODEL_CODE_NOT_IDENTIFIED', model: '', series: '' };
+  }
+
+  const compact = bestModel.replace(/[^A-Z0-9]/g, '');
+  let series = '';
+  for (const code of SERIES_PRIORITY) {
+    if (compact.startsWith(code)) {
+      series = code;
+      break;
+    }
+  }
+
+  if (!series) {
+    const m = compact.match(/^([A-Z]{2,5})/);
+    if (m) series = m[1];
+  }
+
+  if (!series || series.length < 2) {
+    return { ok: false, error: 'SERIES_CODE_NOT_IDENTIFIED', model: bestModel, series: '' };
+  }
+
+  return { ok: true, error: '', model: bestModel, series };
+}
+
 function rootPath(...parts) {
   return path.resolve(__dirname, '..', '..', ...parts);
 }
@@ -66,6 +114,7 @@ function inferBrand(model) {
   if (/^(SKX|SNZH|SRP|SRPE|SNK|SSA|SSK|SNXS|SPB)/.test(m)) return 'SEIKO';
   if (/^(RA-|RA\d|F[A-Z]{2}\d|AC\d)/.test(m)) return 'ORIENT';
   if (/^(BN\d|NJ\d|NY\d)/.test(m)) return 'CITIZEN';
+  if (/^(EFB|ECB|EFV)/.test(m)) return 'CASIO';
   if (/^(F-\d|AE-\d|GA-\d|GMA-|GA-B\d|GAB\d|GBD-|G-\d|DW-\d|A\d{3})/.test(m)) return 'CASIO';
   if (/^(T\d|PRX|LE\s?LOCLE|SEASTAR)/.test(m)) return 'TISSOT';
   if (/^(L3\.|L2\.|L4\.|LONGINES)/.test(m)) return 'LONGINES';
@@ -148,10 +197,12 @@ function detectDialColorFromModel(model) {
 function applySeriesOverrides(inputValues, model, brandHint = '') {
   const m = String(model || '').toUpperCase().trim();
   const brand = normalizeBrand(brandHint) || inferBrand(m) || normalizeBrand(m);
+  const extracted = extractModelAndSeries(m);
+  const series = extracted.ok ? extracted.series : '';
   const out = { ...(inputValues || {}) };
 
   // Casio G-Shock family override
-  if (/^(GA-|GMA-|GBD-|DW-|G-\d)/.test(m) || (/^CASIO/.test(brand) && /^(GA|GMA|GBD|DW|G)/.test(m))) {
+  if (/^(GA-|GMA-|GBD-|DW-|G-\d)/.test(m) || ['GA', 'GMA', 'GM', 'DW'].includes(series) || (/^CASIO/.test(brand) && /^(GA|GMA|GBD|DW|G)/.test(m))) {
     out.movement = 'Kvarts';
     out.case_material = 'Plastik';
     out.bracelet_type = 'Kauçuk';
@@ -159,8 +210,20 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
     out.sr_dial_color = detectDialColorFromModel(m) || out.sr_dial_color || 'Boz';
   }
 
+  // Casio Edifice override
+  if (['EFB', 'ECB', 'EFV'].includes(series)) {
+    out.movement = 'Kvarts';
+    out.case_material = 'Polad';
+    out.bracelet_type = 'Polad';
+    out.bracelet_color = 'Boz';
+    if (!['Göy', 'Qara'].includes(out.sr_dial_color)) {
+      const d = detectDialColorFromModel(m);
+      out.sr_dial_color = ['Göy', 'Qara'].includes(d) ? d : 'Göy';
+    }
+  }
+
   // Citizen NY**** diver override
-  if (/^NY\d/.test(m) || (brand === 'CITIZEN' && /^NY/.test(m))) {
+  if (/^NY\d/.test(m) || series === 'NY' || (brand === 'CITIZEN' && /^NY/.test(m))) {
     out.movement = 'Mexanika';
     out.case_material = 'Polad';
     out.bracelet_type = 'Polad';
@@ -169,7 +232,7 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   }
 
   // Citizen BN**** (Eco-Drive diver/tool) override
-  if (/^BN\d/.test(m) || (brand === 'CITIZEN' && /BN/.test(m))) {
+  if (/^BN\d/.test(m) || series === 'BN' || (brand === 'CITIZEN' && /BN/.test(m))) {
     out.movement = 'Kvarts';
     out.bracelet_type = 'Kauçuk';
     out.case_material = 'Polad';
@@ -180,7 +243,7 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   }
 
   // Seiko SSA**** open-heart / dress override
-  if (/^SSA\d/.test(m)) {
+  if (/^SSA\d/.test(m) || series === 'SSA') {
     out.movement = 'Mexanika';
     out.bracelet_type = 'Dəri';
     out.bracelet_color = 'Gəhvəyi';
@@ -189,7 +252,7 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   }
 
   // Seiko Prospex diver override
-  if (/^(SPB|SBDC)\d/.test(m)) {
+  if (/^(SPB|SBDC)\d/.test(m) || ['SPB', 'SBDC'].includes(series)) {
     out.movement = 'Mexanika';
     out.bracelet_type = 'Polad';
     out.bracelet_color = 'Boz';
@@ -198,12 +261,15 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   }
 
   // Orient Bambino / classic override
-  if (/^(FAC|FAC0|RA-AC|FER|BAMBINO)/.test(m) || (brand === 'ORIENT' && /(BAMBINO|CLASSIC)/.test(m))) {
+  if (/^(FAC|FAC0|RA-AC|FER|BAMBINO)/.test(m) || ['RA', 'FAC', 'AC'].includes(series) || (brand === 'ORIENT' && /(BAMBINO|CLASSIC)/.test(m))) {
     out.movement = 'Mexanika';
     out.bracelet_type = 'Dəri';
     out.bracelet_color = 'Gəhvəyi';
     out.case_material = 'Polad';
-    out.sr_dial_color = detectDialColorFromModel(m) || 'Krem';
+    if (!['Krem', 'Boz', 'Ağ'].includes(out.sr_dial_color)) {
+      out.sr_dial_color = detectDialColorFromModel(m) || 'Krem';
+      if (!['Krem', 'Boz', 'Ağ'].includes(out.sr_dial_color)) out.sr_dial_color = 'Krem';
+    }
   }
 
   // Women's-only pattern
@@ -230,6 +296,43 @@ function applySeriesOverrides(inputValues, model, brandHint = '') {
   }
 
   return out;
+}
+
+function enforceCriticalValidation(values, model, brandHint = '') {
+  const m = String(model || '').toUpperCase().trim();
+  const extracted = extractModelAndSeries(m);
+  const series = extracted.ok ? extracted.series : '';
+  const out = { ...(values || {}) };
+
+  // Allowed-value hard clamp
+  out.sr_dial_color = normalizeAllowed(out.sr_dial_color, CLASSIFIER_ALLOWED_VALUES.sr_dial_color, 'Boz');
+  out.bracelet_type = normalizeAllowed(out.bracelet_type, CLASSIFIER_ALLOWED_VALUES.bracelet_type, 'Dəri');
+  out.gender = normalizeAllowed(out.gender, CLASSIFIER_ALLOWED_VALUES.gender, 'Kişi');
+  out.movement = normalizeAllowed(out.movement, CLASSIFIER_ALLOWED_VALUES.movement, 'Mexanika');
+  out.bracelet_color = normalizeAllowed(out.bracelet_color, CLASSIFIER_ALLOWED_VALUES.bracelet_color, 'Gəhvəyi');
+  out.case_material = normalizeAllowed(out.case_material, CLASSIFIER_ALLOWED_VALUES.case_material, 'Polad');
+
+  // bracelet-type consistency
+  if (out.bracelet_type === 'Kauçuk' && out.bracelet_color === 'Gəhvəyi') out.bracelet_color = 'Qara';
+
+  // series-defined movement is immutable
+  if (['GA', 'GMA', 'GM', 'DW', 'EFB', 'ECB', 'EFV', 'BN'].includes(series) || /BN/.test(m)) out.movement = 'Kvarts';
+  if (['NY', 'SSA', 'SPB', 'SBDC', 'RA', 'FAC', 'AC'].includes(series)) out.movement = 'Mexanika';
+
+  // BN never leather
+  if (['BN'].includes(series) || /BN/.test(m)) {
+    if (out.bracelet_type === 'Dəri') out.bracelet_type = 'Kauçuk';
+    out.movement = 'Kvarts';
+  }
+
+  // no random defaults on low confidence: safe non-default bundle
+  if (!out.sr_dial_color) out.sr_dial_color = 'Boz';
+  if (!out.bracelet_type) out.bracelet_type = 'Dəri';
+  if (!out.movement) out.movement = 'Mexanika';
+  if (!out.bracelet_color) out.bracelet_color = out.bracelet_type === 'Polad' ? 'Boz' : 'Gəhvəyi';
+  if (!out.case_material) out.case_material = 'Polad';
+
+  return applySeriesOverrides(out, model, brandHint);
 }
 
 function fillMissingWithSafeNonDefault(values) {
@@ -288,7 +391,7 @@ function heuristicClassifier(model, brandHint = '') {
   if (out.bracelet_type === 'Polad') out.bracelet_color = 'Boz';
   if (out.bracelet_type === 'Kauçuk' && out.bracelet_color === 'Boz') out.bracelet_color = 'Qara';
 
-  return fillMissingWithSafeNonDefault(applySeriesOverrides(out, m, brand));
+  return enforceCriticalValidation(fillMissingWithSafeNonDefault(applySeriesOverrides(out, m, brand)), m, brand);
 }
 
 function normalizeAllowed(value, allowed, fallback) {
@@ -318,13 +421,17 @@ function buildClassifierPrompt(model, brandHint = '') {
     + `bracelet_color: ${JSON.stringify(CLASSIFIER_ALLOWED_VALUES.bracelet_color)}\n`
     + `case_material: ${JSON.stringify(CLASSIFIER_ALLOWED_VALUES.case_material)}\n\n`
     + 'CRITICAL RULES:\n'
+    + '- Treat this model as fully independent from any previous model.\n'
+    + '- Extract REAL model code and series first; if unclear, return error.\n'
     + '- Never default to Black dial + Steel bracelet + Quartz unless series clearly indicates.\n'
     + '- Apply SERIES OVERRIDES FIRST:\n'
-    + '  * Casio G-Shock (GA, GMA, GBD, DW): Kvarts, Plastik case, Kauçuk bracelet; dial often Ağ/Boz/Qara.\n'
+    + '  * Casio G-Shock (GA, GMA, GM, DW): Kvarts, Plastik case, Kauçuk bracelet; dial often Ağ/Boz/Qara.\n'
+    + '  * Casio Edifice (EFB, ECB, EFV): Kvarts, Polad bracelet, dial Göy or Qara.\n'
     + '  * Citizen NY****: ALWAYS Mexanika; diver variants may use Sarı dial.\n'
+    + '  * Citizen BN****: ALWAYS Kvarts, Kauçuk bracelet, dial Göy/Qara, never Dəri.\n'
     + '  * Seiko SSA****: Dəri bracelet, Krem/light dial, Mexanika.\n'
     + '  * Seiko SPB/SBDC: Polad bracelet, Mexanika.\n'
-    + '  * Orient Bambino/Classic: Dəri bracelet, Krem/light dial, Mexanika.\n'
+    + '  * Orient RA/FAC/AC: Dəri bracelet, Krem/Boz/Ağ dial, Mexanika.\n'
     + '- Gender default Kişi; set Qadın only if clearly women model.\n'
     + '- Multiple versions: pick most common retail configuration.\n'
     + '- Never output fields empty.\n'
@@ -405,9 +512,9 @@ async function classifyWithAI(model, brandHint = '') {
       case_material: normalizeAllowed(parsed.case_material, CLASSIFIER_ALLOWED_VALUES.case_material, defaults.case_material)
     };
 
-    return fillMissingWithSafeNonDefault(applySeriesOverrides(normalized, model, brandHint));
+    return enforceCriticalValidation(fillMissingWithSafeNonDefault(applySeriesOverrides(normalized, model, brandHint)), model, brandHint);
   } catch (_) {
-    return fillMissingWithSafeNonDefault(applySeriesOverrides(defaults, model, brandHint));
+    return enforceCriticalValidation(fillMissingWithSafeNonDefault(applySeriesOverrides(defaults, model, brandHint)), model, brandHint);
   }
 }
 
@@ -476,6 +583,23 @@ function applyClassifierOnSpec(spec, classified, model) {
   out.kemer_rengi = needsReplace(out.kemer_rengi) ? `KR - ${classified.bracelet_color}` : out.kemer_rengi;
   out.korpus = needsReplace(out.korpus) ? classified.case_material : out.korpus;
 
+  const rawForValidation = {
+    sr_dial_color: String(out.siferblat_rengi || '').replace(/^SR\s*-\s*/i, '').trim(),
+    bracelet_type: String(out.bilerzik || '').replace(/^Bilərzik\s*-\s*/i, '').trim(),
+    gender: String(out.cinsi || '').replace(/^Cinsi\s*-\s*/i, '').trim(),
+    movement: String(out.mexanizm || '').trim(),
+    bracelet_color: String(out.kemer_rengi || '').replace(/^KR\s*-\s*/i, '').trim(),
+    case_material: String(out.korpus || '').trim()
+  };
+  const validated = enforceCriticalValidation(rawForValidation, model, out.brand || inferBrand(model));
+
+  out.siferblat_rengi = `SR - ${validated.sr_dial_color}`;
+  out.bilerzik = `Bilərzik - ${validated.bracelet_type}`;
+  out.cinsi = `Cinsi - ${validated.gender}`;
+  out.mexanizm = validated.movement;
+  out.kemer_rengi = `KR - ${validated.bracelet_color}`;
+  out.korpus = validated.case_material;
+
   const m = String(model || '').toUpperCase();
   if (/(DIVER|PROSPEX|AQUALAND|SEASTAR|MARIN(E|ER)|NY\d|BN\d|SPB\d|SBDC\d|SKX)/.test(m)) {
     const currentDial = String(out.siferblat_rengi || '').replace(/^SR\s*-\s*/i, '').trim();
@@ -489,20 +613,26 @@ function applyClassifierOnSpec(spec, classified, model) {
 }
 
 async function createWixRowFromModel(model) {
-  const baseSpec = findSpec(model);
-  const brandHint = baseSpec.brand || inferBrand(model);
-  const classified = await classifyWithAI(model, brandHint);
-  const spec = applyClassifierOnSpec(baseSpec, classified, model);
+  const extracted = extractModelAndSeries(model);
+  if (!extracted.ok) {
+    throw new Error(extracted.error || 'MODEL_CODE_NOT_IDENTIFIED');
+  }
+
+  const normalizedModel = extracted.model;
+  const baseSpec = findSpec(normalizedModel);
+  const brandHint = baseSpec.brand || inferBrand(normalizedModel);
+  const classified = await classifyWithAI(normalizedModel, brandHint);
+  const spec = applyClassifierOnSpec(baseSpec, classified, normalizedModel);
 
   const row = {};
   WIX_COLUMNS.forEach((c) => { row[c] = ''; });
-  row.handleId = generateHandleId(model);
+  row.handleId = generateHandleId(normalizedModel);
   row.fieldType = 'Product';
-  row.name = String(spec.name || model).slice(0, 255);
-  row.description = `<p>${String(spec.description || `Watch Model: ${model}`)}</p>`;
+  row.name = String(spec.name || normalizedModel).slice(0, 255);
+  row.description = `<p>${String(spec.description || `Watch Model: ${normalizedModel}`)}</p>`;
   row.productImageUrl = String(spec.image_url || 'https://dummyimage.com/1200x1200/e9ecef/212529.jpg?text=No+Image');
   row.collection = buildCollection(spec);
-  row.sku = model;
+  row.sku = normalizedModel;
   row.price = String(spec.price || '');
   row.visible = 'true';
   row.inventory = '10';
