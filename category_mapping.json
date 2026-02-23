@@ -1,0 +1,64 @@
+{
+  "brand_collections": {
+    "CASIO": "CASIO",
+    "CITIZEN": "CITIZEN",
+    "EDIFICE": "EDIFICE",
+    "HAMILTON": "HAMILTON",
+    "INGERSOLL": "INGERSOLL",
+    "LONGINES": "LONGINES",
+    "OMEGA": "OMEGA",
+    "ORIENT": "ORIENT",
+    "ROLEX": "ROLEX",
+    "SEIKO": "SEİKO",
+    "SEİKO": "SEİKO",
+    "TISSOT": "TISSOT",
+    "TUDOR": "TUDOR",
+    "TIMEX": "TIMEX",
+    "BULOVA": "BULOVA"
+  },
+  "category_keywords": {
+    "siferblat_rengi": {
+      "SR - Ağ": ["white dial", "ağ siferblat", "ağ dial"],
+      "SR - Boz": ["gray dial", "grey dial", "boz siferblat", "boz dial"],
+      "SR - Firuzə": ["turquoise dial", "teal dial", "firuzə siferblat"],
+      "SR - Gəhvəyi": ["brown dial", "qəhvəyi siferblat", "qəhvəyi dial"],
+      "SR - Göy": ["navy dial", "cobalt dial", "göy siferblat", "göy dial"],
+      "SR - Krem": ["cream dial", "ivory dial", "krem siferblat"],
+      "SR - Mavi": ["blue dial", "mavi siferblat", "mavi dial"],
+      "SR - Qara": ["black dial", "qara siferblat", "qara dial"],
+      "SR - Qırmızı": ["red dial", "qırmızı siferblat", "qırmızı dial"],
+      "SR - Sarı": ["yellow dial", "sarı siferblat", "sarı dial"],
+      "SR - Yaşıl": ["green dial", "yaşıl siferblat", "yaşıl dial"]
+    },
+    "bilerzik": {
+      "Bilərzik - Dəri": ["leather", "genuine leather", "dəri"],
+      "Bilərzik - Kauçuk": ["rubber", "silicone", "resin", "kauçuk"],
+      "Bilərzik - Polad": ["steel bracelet", "stainless steel bracelet", "metal bracelet", "polad bilərzik", "mesh bracelet", "milanese"]
+    },
+    "cinsi": {
+      "Cinsi - Kişi": ["men", "mens", "men's", "kişi", "male"],
+      "Cinsi - Qadın": ["women", "womens", "women's", "lady", "ladies", "qadın", "female"]
+    },
+    "olcu": {
+      "Ölçü - 30 x 30 mm": ["30 x 30 mm", "30x30 mm", "30x30", "30 mm"],
+      "Ölçü - 41 x 41 mm": ["41 x 41 mm", "41x41 mm", "41x41", "41 mm"]
+    },
+    "mexanizm": {
+      "Kvarts": ["quartz", "kvarts"],
+      "Mexanika": ["automatic", "mechanical", "self-winding", "manual wind", "mexanik", "mexanika"]
+    },
+    "kemer_rengi": {
+      "KR - Gəhvəyi": ["brown strap", "brown leather", "qəhvəyi kəmər", "qəhvəyi dəri"],
+      "KR - Qara": ["black strap", "black leather", "qara kəmər", "qara dəri"],
+      "KR - Göy": ["blue strap", "mavi kəmər", "göy kəmər"],
+      "KR - Boz": ["gray strap", "grey strap", "boz kəmər"],
+      "KR - Boz/Sarı": ["gray and yellow strap", "grey and yellow strap", "boz sarı kəmər", "boz/sarı kəmər"],
+      "KR - Ağ": ["white strap", "ağ kəmər"],
+      "KR - Krem": ["cream strap", "ivory strap", "krem kəmər"],
+      "KR - Sarı": ["yellow strap", "sarı kəmər"]
+    },
+    "korpus": {
+      "Polad": ["stainless steel", "steel case", "metal case", "polad korpus", "steel", "polad"]
+    }
+  }
+}

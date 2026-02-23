@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Data Scraper & Wix Porter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                    ⌚ Watch Data Scraper & Wix Porter
+                </h1>
+                <p class="text-lg text-gray-600">
+                    Search watch models, extract details, and generate WIX-compatible CSV
+                </p>
+            </div>
+
+            <!-- Main Card -->
+            <div class="bg-white rounded-xl shadow-2xl p-8 fade-in">
+                
+                <!-- Input Section -->
+                <div class="mb-8">
+                    <label for="modelNumbers" class="block text-sm font-semibold text-gray-700 mb-3">
+                        📋 Paste Watch Model Numbers (one per line)
+                    </label>
+                    <textarea 
+                        id="modelNumbers" 
+                        placeholder="Example:&#10;SKX007&#10;SNZH55J1&#10;FAA00016L"
+                        class="w-full h-40 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition resize-none"
+                    ></textarea>
+                    <p class="text-sm text-gray-500 mt-2">
+                        Paste your watch model numbers separated by line breaks
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-4 mb-8">
+                    <button 
+                        onclick="startSearch()"
+                        id="searchBtn"
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <span id="searchBtnIcon">🔍</span>
+                        <span id="searchBtnText">Search & Extract Data</span>
+                    </button>
+                    <button 
+                        onclick="downloadTemplate()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition"
+                        title="Download empty Wix template with all 51 columns"
+                    >
+                        📋 Template
+                    </button>
+                    <button 
+                        onclick="clearForm()"
+                        class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg transition"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Progress Section (Hidden by default) -->
+                <div id="progressSection" class="hidden mb-8 fade-in">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-700">Processing...</span>
+                        <span id="progressText" class="text-sm text-indigo-600 font-semibold">0%</span>
+                    </div>
+                    <div class="flex items-center justify-between mb-2 text-xs text-gray-600">
+                        <span id="progressCountText">0 / 0 model emal edildi</span>
+                        <span id="etaText">Təxmini qalıq vaxt: --:--</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div 
+                            id="progressBar" 
+                            class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-full rounded-full transition-all duration-300"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- Results Section (Hidden by default) -->
+                <div id="resultsSection" class="hidden fade-in">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">📊 Extracted Data</h2>
+                    
+                    <!-- Results Table -->
+                    <div class="overflow-x-auto mb-6 border border-gray-200 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-indigo-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Handle</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">SKU</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Image URL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody" class="divide-y divide-gray-200">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Download Button -->
+                    <div class="flex gap-4">
+                        <button 
+                            onclick="downloadCSV()"
+                            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <span>📥</span>
+                            <span>Download WIX CSV</span>
+                        </button>
+                        <button 
+                            onclick="resetForm()"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition"
+                        >
+                            New Search
+                        </button>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <div class="bg-indigo-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600">Total Records</p>
+                            <p class="text-2xl font-bold text-indigo-600" id="totalRecords">0</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600">Ready for Upload</p>
+                            <p class="text-2xl font-bold text-green-600">✓</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Section (Hidden by default) -->
+                <div id="errorSection" class="hidden fade-in p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p class="text-red-700 font-semibold">⚠️ Error</p>
+                    <p id="errorText" class="text-red-600 mt-2"></p>
+                </div>
+
+            </div>
+
+            <!-- Info Box -->
+            <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <h3 class="font-bold text-blue-900 mb-2">ℹ️ How it works:</h3>
+                <ul class="text-blue-800 text-sm space-y-1">
+                    <li>✓ Paste watch model numbers (one per line)</li>
+                    <li>✓ System searches for product details and images</li>
+                    <li>✓ Data is formatted as WIX-compatible CSV</li>
+                    <li>✓ Download and import directly into your WIX store</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentResults = [];
+        let progressStartMs = 0;
+        let progressTotalModels = 0;
+        let secondsPerModel = 6; // 5-7 saniyə arası orta qiymət
+
+        function validateInput() {
+            const textarea = document.getElementById('modelNumbers');
+            const models = textarea.value.trim().split('\n').filter(m => m.trim());
+            
+            if (models.length === 0) {
+                showError('Please enter at least one watch model number');
+                return null;
+            }
+            
+            return models;
+        }
+
+        function showError(message) {
+            const errorSection = document.getElementById('errorSection');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorSection.classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('errorSection').classList.add('hidden');
+        }
+
+        function showProgress(totalModels) {
+            document.getElementById('progressSection').classList.remove('hidden');
+            progressTotalModels = Math.max(0, Number(totalModels) || 0);
+            progressStartMs = Date.now();
+            document.getElementById('progressCountText').textContent = `0 / ${progressTotalModels} model emal edildi`;
+            document.getElementById('etaText').textContent = formatEta(progressTotalModels * secondsPerModel);
+        }
+
+        function updateProgress(percentage, processed = null, total = null) {
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = Math.round(percentage) + '%';
+
+            if (processed !== null && total !== null) {
+                document.getElementById('progressCountText').textContent = `${processed} / ${total} model emal edildi`;
+
+                const elapsedSec = Math.max(0, (Date.now() - progressStartMs) / 1000);
+                const avgPerModel = processed > 0 ? (elapsedSec / processed) : secondsPerModel;
+                const remaining = Math.max(0, (total - processed) * avgPerModel);
+                document.getElementById('etaText').textContent = formatEta(remaining);
+            }
+        }
+
+        function formatEta(seconds) {
+            const s = Math.max(0, Math.round(Number(seconds) || 0));
+            const mm = String(Math.floor(s / 60)).padStart(2, '0');
+            const ss = String(s % 60).padStart(2, '0');
+            return `Təxmini qalıq vaxt: ${mm}:${ss}`;
+        }
+
+        async function startSearch() {
+            hideError();
+            const models = validateInput();
+            if (!models) return;
+
+            const searchBtn = document.getElementById('searchBtn');
+            const searchBtnText = document.getElementById('searchBtnText');
+            const searchBtnIcon = document.getElementById('searchBtnIcon');
+            
+            // Disable button and show loading state
+            searchBtn.disabled = true;
+            searchBtnIcon.textContent = '⏳';
+            searchBtnIcon.classList.add('spinner');
+            searchBtnText.textContent = 'Processing...';
+
+            showProgress(models.length);
+            updateProgress(0, 0, models.length);
+            currentResults = [];
+            displayResults(currentResults);
+            document.getElementById('resultsSection').classList.remove('hidden');
+
+            try {
+                for (let i = 0; i < models.length; i++) {
+                    const model = models[i];
+                    const response = await fetch('/api/search-single', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ model_number: model })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error || `Model emal edilə bilmədi: ${model}`);
+                    }
+
+                    const data = await response.json();
+                    if (data && data.result) {
+                        currentResults.push(data.result);
+                        displayResults(currentResults);
+                    }
+
+                    const processed = i + 1;
+                    const percent = (processed / models.length) * 100;
+                    updateProgress(percent, processed, models.length);
+                }
+
+                updateProgress(100, models.length, models.length);
+                document.getElementById('etaText').textContent = formatEta(0);
+
+            } catch (error) {
+                showError('Error during search: ' + error.message);
+                document.getElementById('progressSection').classList.add('hidden');
+            } finally {
+                searchBtn.disabled = false;
+                searchBtnIcon.textContent = '🔍';
+                searchBtnIcon.classList.remove('spinner');
+                searchBtnText.textContent = 'Search & Extract Data';
+            }
+        }
+
+        function displayResults(results) {
+            const tableBody = document.getElementById('resultsTableBody');
+            tableBody.innerHTML = '';
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition';
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-gray-900 font-mono">${escapeHtml(result.handleId || result.handle || '')}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${escapeHtml(result.name || '')}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 font-mono">${escapeHtml(result.sku || '')}</td>
+                    <td class="px-4 py-3 text-sm text-blue-600">
+                        ${result.productImageUrl ? `<a href="${escapeHtml(result.productImageUrl)}" target="_blank" class="hover:underline">View Image</a>` : '<span class="text-gray-400">No image</span>'}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('totalRecords').textContent = results.length;
+        }
+
+        async function downloadCSV() {
+            try {
+                const response = await fetch('/api/generate-csv', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        results: currentResults
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate CSV');
+                }
+
+                // Get the blob and create download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const contentDisposition = response.headers.get('Content-Disposition') || '';
+                const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+                const serverFileName = fileNameMatch ? decodeURIComponent(fileNameMatch[1] || fileNameMatch[2]) : '';
+                a.download = serverFileName || `wix_watches_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                showError('Error downloading CSV: ' + error.message);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('modelNumbers').value = '';
+            document.getElementById('modelNumbers').focus();
+        }
+
+        function resetForm() {
+            clearForm();
+            document.getElementById('progressSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+            updateProgress(0, 0, 0);
+            document.getElementById('etaText').textContent = 'Təxmini qalıq vaxt: --:--';
+            document.getElementById('progressCountText').textContent = '0 / 0 model emal edildi';
+            currentResults = [];
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Focus on textarea on load
+        window.addEventListener('load', () => {
+            document.getElementById('modelNumbers').focus();
+        });
+
+        async function downloadTemplate() {
+            try {
+                const response = await fetch('/api/get-template');
+                if (!response.ok) {
+                    throw new Error('Failed to download template');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'wix_template.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                showError('Error downloading template: ' + error.message);
+            }
+        }
+    </script>
+
+</body>
+</html>
