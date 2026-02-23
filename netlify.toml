@@ -2,7 +2,7 @@
   publish = "templates"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "netlify/js-functions"
 
 [build.environment]
   PYTHON_VERSION = "3.11.6"
